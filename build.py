@@ -1,27 +1,53 @@
+import sys
 from dataclasses import dataclass, field
 from pathlib import Path
 from shutil import copyfile
 
+import typer
 from jinja2 import Environment, FileSystemLoader
+from loguru import logger
+from pydantic import BaseModel
+
+app = typer.Typer()
 
 
-@dataclass
-class Card:
+class Card(BaseModel):
     name: str
-    stem: str
+    directory: str
     manifest: str
+    blob: str = "*.bin"
     variables: dict = field(default_factory=dict)
 
 
-artwork = Card(name="Oxocard Mini Artwork", manifest="artwork", stem="artwork")
-galaxy = Card(name="Oxocard Mini Galaxy", manifest="galaxy", stem="galaxy")
-science = Card(name="Oxocard Mini Science", manifest="science", stem="science")
-connect = Card(name="Oxocard Mini Connect", manifest="connect", stem="connect")
+artwork = Card(
+    name="Oxocard Mini Artwork",
+    manifest="artwork",
+    directory="artwork",
+    blob="oxocard_mini_artwork_v*.bin",
+)
+galaxy = Card(
+    name="Oxocard Mini Galaxy",
+    manifest="galaxy",
+    directory="galaxy",
+    blob="oxocard_mini_galaxy_v*.bin",
+)
+science = Card(
+    name="Oxocard Mini Science",
+    manifest="science",
+    directory="science",
+    blob="oxocard_mini_science_v*.bin",
+)
+connect = Card(
+    name="Oxocard Mini Connect",
+    manifest="connect",
+    directory="connect",
+    blob="oxocard_mini_connect_v*.bin",
+)
 connect_makey = Card(
     name="Oxocard Mini Connect (Makey Edition)",
     manifest="connect-makey",
-    stem="connect",
-    variables={"is_makey": True},
+    directory="connect",
+    blob="oxocard_mini_connect_make_v*.bin",
 )
 
 firmware_path = Path("oxocard_binaries")
@@ -29,14 +55,24 @@ firmware_path = Path("oxocard_binaries")
 cards = [artwork, galaxy, science, connect, connect_makey]
 
 
-def main():
+@app.command()
+def build(debug: bool = False, quiet: bool = False):
+    logger.remove()
+    if debug:
+        logger.add(sys.stdout, level="DEBUG")
+    elif quiet:
+        logger.add(sys.stdout, level="WARNING")
+    else:
+        logger.add(sys.stdout, level="INFO")
+
+    logger.info("Building webpage...")
+
     env = Environment(
         loader=FileSystemLoader("templates"),
     )
 
     products = []
     (Path("webpage") / "firmware" / "common").mkdir(parents=True, exist_ok=True)
-    (Path("webpage") / "firmware" / "nvs").mkdir(parents=True, exist_ok=True)
 
     copyfile(
         Path("oxocard_binaries") / "common" / "bootloader.bin",
@@ -50,8 +86,10 @@ def main():
 
     for card in cards:
         firmware = sorted(
-            list((firmware_path / card.stem).glob("*.bin")), reverse=True
+            list((firmware_path / card.directory).glob(card.blob)), reverse=True
         )[0]
+
+        logger.info(f"Using firmware {firmware} for card {card.name}")
         version = firmware.stem.split("_")[-1]
 
         copyfile(
@@ -76,11 +114,8 @@ def main():
         with open(Path("webpage") / "index.html", "w") as f:
             f.write(template.render(products=products))
 
-    copyfile(
-        Path("nvs") / "makey.bin",
-        Path("webpage") / "firmware" / "nvs" / "nvs-makey.bin",
-    )
+    logger.success("Build finished.")
 
 
 if __name__ == "__main__":
-    main()
+    app()

@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: 2023 Oxon AG
+# SPDX-License-Identifier: BSD-3-Clause
+
 build:
     poetry run build
 

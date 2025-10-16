@@ -1,5 +1,17 @@
+# SPDX-FileCopyrightText: 2023 Oxon AG
+# SPDX-License-Identifier: BSD-3-Clause
+
+"""
+Build script for Oxocard firmware webpage.
+
+This script generates the firmware webpage by processing firmware binaries,
+creating manifest files, and copying necessary assets to the webpage directory.
+
+Author: Jacques Supcik <jacques.supcik@hefr.ch>
+"""
+
 import sys
-from dataclasses import dataclass, field
+from dataclasses import field
 from pathlib import Path
 from shutil import copyfile
 
